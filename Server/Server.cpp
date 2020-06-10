@@ -3,6 +3,8 @@
 #include <iostream>
 #include <WS2tcpip.h>
 
+
+
 SOCKET Connect;
 SOCKET *Connections;
 SOCKET Listen;
@@ -58,7 +60,8 @@ int main()
 	SAddr.sin_family = AF_INET;
 	//адрес сервера. Т.к. TCP/IP представляет адреса в числовом виде, то для перевода
 	// адреса используем функцию inet_addr.
-	SAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	//SAddr.sin_addr.s_addr = inet_addr((char*)"127.0.0.1");
+	InetPton(AF_INET, ("127.0.0.1"), &SAddr.sin_addr.s_addr);
 	// Порт. Используем функцию htons для перевода номера порта из обычного в //TCP/IP представление.
 	SAddr.sin_port = htons(8488);
 	Listen = socket(AF_INET, SOCK_STREAM, 0);
