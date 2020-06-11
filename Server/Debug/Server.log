@@ -1,2 +1,4 @@
 ﻿  Server.cpp
+G:\project\Server\Server\Server.cpp(44,17): warning C4154:  удаление массива; выполнено преобразование к указателю
+G:\project\Server\Server\Server.cpp(39,20): warning C4101:  exp: неиспользованная локальная переменная
   Server.vcxproj -> G:\project\Server\Debug\Server.exe

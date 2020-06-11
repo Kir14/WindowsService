@@ -14,19 +14,31 @@ int ClientMax = 100;
 
 void SendMessageToClient(int ID)
 {
-	char* buffer = new char[1024];
+	char buffer[1024];
 	for (;; Sleep(50))
 	{
-		memset(buffer, 0, sizeof(buffer));
-		if (recv(Connections[ID], buffer, 1024, NULL))
+		try
 		{
-			printf(buffer);
-			printf("\n");
-			for (int i = 0; i <= ClientCount; i++)
-			{
-				send(Connections[i], buffer, strlen(buffer), NULL);
 
+			if (Connections[ID] == NULL)
+			{
+				break;
 			}
+			memset(buffer, 0, sizeof(buffer));
+			if (recv(Connections[ID], buffer, 1024, NULL))
+			{	
+				printf("\n");
+				printf(buffer);
+				for (int i = 0; i <= ClientCount; i++)
+				{
+					send(Connections[i], buffer, strlen(buffer), NULL);
+
+				}
+			}
+		}
+		catch(_exception exp)
+		{
+
 		}
 	}
 	delete []buffer;
@@ -35,6 +47,7 @@ void SendMessageToClient(int ID)
 
 int main()
 {
+	HANDLE thr;
 	WSADATA data;
 	WORD version = MAKEWORD(2, 2);
 	int res = WSAStartup(version, &data); 
@@ -84,7 +97,7 @@ int main()
 
 	listen(Listen, ClientMax);
 	printf("Start server...");
-	char a_connect[] = "Connect...;;;5";
+	char a_connect[] = "Connect...";
 	
 	for (;; Sleep(50))
 	{
@@ -93,11 +106,11 @@ int main()
 			printf("Client connect");
 			Connections[ClientCount] = Connect;
 			send(Connections[ClientCount], a_connect, strlen(a_connect), NULL);
-			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SendMessageToClient, (LPVOID)ClientCount, NULL, NULL);
+			thr=CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SendMessageToClient, (LPVOID)ClientCount, NULL, NULL);
 			ClientCount++;
+			
 		}
 	}
-
 
 	delete []Connections;
 	return 0;
