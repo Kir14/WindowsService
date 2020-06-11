@@ -2,12 +2,15 @@
 #include <WinSock2.h>
 #include <iostream>
 #include <WS2tcpip.h>
+#include <vector>
 
 
 
 SOCKET Connect;
-SOCKET *Connections;
+//SOCKET *Connections;
+std::vector<SOCKET> Connections;
 SOCKET Listen;
+
 
 int ClientCount = 0;
 int ClientMax = 100;
@@ -25,15 +28,23 @@ void SendMessageToClient(int ID)
 				break;
 			}
 			memset(buffer, 0, sizeof(buffer));
-			if (recv(Connections[ID], buffer, 1024, NULL))
+			if (recv(Connections[ID], buffer, 1024, NULL) !=  SOCKET_ERROR)
 			{	
+				if (errno) return;
 				printf("\n");
 				printf(buffer);
-				for (int i = 0; i <= ClientCount; i++)
+				for (SOCKET sk : Connections)
 				{
-					send(Connections[i], buffer, strlen(buffer), NULL);
+					send(sk, buffer, strlen(buffer), NULL);
 
 				}
+			}
+			else
+			{
+				ClientCount--;
+				Connections.erase(Connections.begin() + ID);
+				printf("Disconnect");
+				return ;
 			}
 		}
 		catch(_exception exp)
@@ -41,7 +52,7 @@ void SendMessageToClient(int ID)
 
 		}
 	}
-	delete []buffer;
+	//delete []buffer;
 }
 
 
@@ -64,7 +75,7 @@ int main()
     }
 	*/
 
-	Connections = new SOCKET[ClientMax];
+	//Connections = new SOCKET[ClientMax];
 	
 	// С сайта https://club.shelek.ru/viewart.php?id=35
 	sockaddr_in SAddr;
@@ -97,21 +108,23 @@ int main()
 
 	listen(Listen, ClientMax);
 	printf("Start server...");
-	char a_connect[] = "Connect...";
 	
-	for (;; Sleep(50))
+	while(true)
 	{
+		Sleep(50);
 		if (Connect = accept(Listen, NULL, NULL))
 		{
 			printf("Client connect");
-			Connections[ClientCount] = Connect;
-			send(Connections[ClientCount], a_connect, strlen(a_connect), NULL);
+			//Connections[ClientCount] = Connect;
+			Connections.push_back(Connect);
 			thr=CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SendMessageToClient, (LPVOID)ClientCount, NULL, NULL);
 			ClientCount++;
 			
 		}
+
 	}
 
-	delete []Connections;
+	//delete []Connections;
+	Connections.clear();
 	return 0;
 }
