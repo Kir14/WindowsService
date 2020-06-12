@@ -1,3 +1,2 @@
 ﻿  Server.cpp
-G:\project\Server\Server\Server.cpp(50,20): warning C4101:  exp: неиспользованная локальная переменная
   Server.vcxproj -> G:\project\Server\Debug\Server.exe
