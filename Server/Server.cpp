@@ -110,10 +110,11 @@ int main()
 
 	listen(Listen, ClientMax);
 	printf("Start server...");
-	char Hello[] = "HEllo";
-
+	
 	while (true)
 	{
+		char Hello[200] = "HEllo ";
+		char buffer[100];
 		Sleep(50);
 		if (Connect = accept(Listen, NULL, NULL))
 		{
@@ -122,6 +123,8 @@ int main()
 			//Connections[ClientCount] = Connect;
 			EnterCriticalSection(&CriticalSection);
 			Connections.push_back(Connect);
+			recv(Connect, buffer, 100, NULL);
+			strcat_s(Hello, 100, buffer);
 			send(Connect, Hello, strlen(Hello), NULL);
 			LeaveCriticalSection(&CriticalSection);
 			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SendMessageToClient, (LPVOID)Connect, NULL, NULL);
