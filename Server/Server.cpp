@@ -11,7 +11,7 @@ SOCKET Connect;
 //SOCKET *Connections;
 std::deque<SOCKET> Connections;
 SOCKET Listen;
-
+CRITICAL_SECTION CriticalSection;
 
 int ClientCount = 0;
 int ClientMax = 100;
@@ -28,21 +28,25 @@ void SendMessageToClient(SOCKET Client)
 		
 		if (recv(*std::find(Connections.begin(), Connections.end(), Client), buffer, 1024, NULL) != SOCKET_ERROR)
 		{
-			if (errno) return;
+			EnterCriticalSection(&CriticalSection);
 			printf("\n");
+			printf("1 ");
 			printf(buffer);
 			for (SOCKET sk : Connections)
 			{
 				send(sk, buffer, strlen(buffer), NULL);
 
 			}
+			LeaveCriticalSection(&CriticalSection);
 		}
 		else
 		{
+			EnterCriticalSection(&CriticalSection);
 			ClientCount--;
-			closesocket(*std::find(Connections.begin(), Connections.end(), Client));
-			Connections.erase(std::find(Connections.begin(), Connections.end(), Client));
-			Connections.shrink_to_fit();
+			auto it = std::find(Connections.begin(), Connections.end(), Client);
+			closesocket(*it);
+			Connections.erase(it);
+			LeaveCriticalSection(&CriticalSection);
 			printf("\n");
 			printf("Disconnect");
 			return;
@@ -55,14 +59,15 @@ void SendMessageToClient(SOCKET Client)
 
 int main()
 {
-	HANDLE thr;
 	WSADATA data;
 	WORD version = MAKEWORD(2, 2);
-	int res = WSAStartup(version, &data);
-	if (res != 0)
+	if (WSAStartup(version, &data))
 	{
 		return 1;
 	}
+	InitializeCriticalSection(&CriticalSection);
+
+
 	/*   можно заменить
 	if (FAILED (WSAStartup (MAKEWORD( 2, 2 ), &data) ) )
 	{
@@ -105,9 +110,8 @@ int main()
 
 	listen(Listen, ClientMax);
 	printf("Start server...");
+	char Hello[] = "HEllo";
 
-	SOCKET Test;
-	Connections.push_back(Test);
 	while (true)
 	{
 		Sleep(50);
@@ -116,8 +120,11 @@ int main()
 			printf("\n");
 			printf("Client connect");
 			//Connections[ClientCount] = Connect;
+			EnterCriticalSection(&CriticalSection);
 			Connections.push_back(Connect);
-			thr = CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SendMessageToClient, (LPVOID)Connect, NULL, NULL);
+			send(Connect, Hello, strlen(Hello), NULL);
+			LeaveCriticalSection(&CriticalSection);
+			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SendMessageToClient, (LPVOID)Connect, NULL, NULL);
 			ClientCount++;
 
 		}
