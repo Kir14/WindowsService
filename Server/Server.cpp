@@ -10,8 +10,10 @@
 SOCKET Connect;
 //SOCKET *Connections;
 std::deque<SOCKET> Connections;
+std::deque<std::string>names;
 SOCKET Listen;
-CRITICAL_SECTION CriticalSection;
+CRITICAL_SECTION CsConn;
+CRITICAL_SECTION CsNames;
 
 int ClientCount = 0;
 int ClientMax = 100;
@@ -28,25 +30,25 @@ void SendMessageToClient(SOCKET Client)
 		
 		if (recv(*std::find(Connections.begin(), Connections.end(), Client), buffer, 1024, NULL) != SOCKET_ERROR)
 		{
-			EnterCriticalSection(&CriticalSection);
+			EnterCriticalSection(&CsConn);
 			printf("\n");
-			printf("1 ");
 			printf(buffer);
 			for (SOCKET sk : Connections)
 			{
 				send(sk, buffer, strlen(buffer), NULL);
 
 			}
-			LeaveCriticalSection(&CriticalSection);
+			LeaveCriticalSection(&CsConn);
 		}
 		else
 		{
-			EnterCriticalSection(&CriticalSection);
+			EnterCriticalSection(&CsConn);
 			ClientCount--;
 			auto it = std::find(Connections.begin(), Connections.end(), Client);
 			closesocket(*it);
+			names.erase(names.begin() + (it - Connections.begin()));
 			Connections.erase(it);
-			LeaveCriticalSection(&CriticalSection);
+			LeaveCriticalSection(&CsConn);
 			printf("\n");
 			printf("Disconnect");
 			return;
@@ -65,7 +67,7 @@ int main()
 	{
 		return 1;
 	}
-	InitializeCriticalSection(&CriticalSection);
+	InitializeCriticalSection(&CsConn);
 
 
 	/*   можно заменить
@@ -121,12 +123,13 @@ int main()
 			printf("\n");
 			printf("Client connect");
 			//Connections[ClientCount] = Connect;
-			EnterCriticalSection(&CriticalSection);
-			Connections.push_back(Connect);
+			EnterCriticalSection(&CsConn);
 			recv(Connect, buffer, 100, NULL);
+			Connections.push_back(Connect);
+			names.push_back(buffer);
 			strcat_s(Hello, 100, buffer);
 			send(Connect, Hello, strlen(Hello), NULL);
-			LeaveCriticalSection(&CriticalSection);
+			LeaveCriticalSection(&CsConn);
 			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SendMessageToClient, (LPVOID)Connect, NULL, NULL);
 			ClientCount++;
 
