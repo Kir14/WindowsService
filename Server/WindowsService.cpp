@@ -27,20 +27,20 @@ int ClientMax = 100;
 
 int main()
 {
-	
+
 	InitializeCriticalSection(&CsConn);
 	InitializeCriticalSection(&CsNames);
 
 	CreateThread(
-		NULL,              // no security attribute 
-		0,                 // default stack size 
+		NULL,              // no security attribute
+		0,                 // default stack size
 		(LPTHREAD_START_ROUTINE)Pipes,    // функция обработки сообщений
 		NULL,    // параметр потока
-		0,                 // not suspended 
+		0,                 // not suspended
 		NULL);      // возврат id потока
 
 	Connection();
-	
+
 	while (true)
 	{
 		char Hello[200] = "";
@@ -179,13 +179,13 @@ void Pipes()
 	{
 		hPipe = CreateNamedPipe(
 			pipename,             // имя канала
-			PIPE_ACCESS_DUPLEX,       // доступ на чтение\запись 
-			PIPE_TYPE_MESSAGE |       // Тип сообщения трубы													
+			PIPE_ACCESS_DUPLEX,       // доступ на чтение\запись
+			PIPE_TYPE_MESSAGE |       // Тип сообщения трубы
 			PIPE_READMODE_MESSAGE |   // Режим чтения сообщение
-			PIPE_WAIT,                // режим блокировки 
-			PIPE_UNLIMITED_INSTANCES, // max. instances  
-			1024,                  // Размер выходного буфера 
-			1024,                  // Размер входного буфера          
+			PIPE_WAIT,                // режим блокировки
+			PIPE_UNLIMITED_INSTANCES, // max. instances
+			1024,                  // Размер выходного буфера
+			1024,                  // Размер входного буфера
 			0,                        // Значение времени ожидания
 			NULL);                    //атрибуты
 
@@ -195,8 +195,8 @@ void Pipes()
 			return ;
 		}
 
-		// Ожидание клиента для подключения; если это удастся, 
-		// функция возвращает ненулевое значение. Если функция 
+		// Ожидание клиента для подключения; если это удастся,
+		// функция возвращает ненулевое значение. Если функция
 		// возвращает ноль, GetLastError возвращает ERROR_PIPE подключены.
 
 		fConnected = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
@@ -207,11 +207,11 @@ void Pipes()
 
 			// Создаем поток для этого клиента.
 			hThread = CreateThread(
-				NULL,              // no security attribute 
-				0,                 // default stack size 
+				NULL,              // no security attribute
+				0,                 // default stack size
 				InstanceThread,    // функция обработки сообщений
 				(LPVOID)hPipe,    // параметр потока
-				0,                 // not suspended 
+				0,                 // not suspended
 				&dwThreadId);      // возврат id потока
 
 			if (hThread == NULL)
@@ -285,11 +285,11 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		Sleep(500);
 		// Читаем клиентские запросы из трубы. Это упрощенное код позволяет только только сообщения
 		/*fSuccess = ReadFile(
-			hPipe,        // handle to pipe 
-			pchRequest,    // buffer to receive data 
-			1024 * sizeof(TCHAR), // size of buffer 
-			&cbBytesRead, // number of bytes read 
-			NULL);        // not overlapped I/O 
+			hPipe,        // handle to pipe
+			pchRequest,    // buffer to receive data
+			1024 * sizeof(TCHAR), // size of buffer
+			&cbBytesRead, // number of bytes read
+			NULL);        // not overlapped I/O
 
 		if (!fSuccess || cbBytesRead == 0)
 		{
@@ -310,18 +310,18 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		int lenght = 0;
 		char namesToMesage[1000]="";
 		for (auto it : names)
-		{			
+		{
 			strcat_s(namesToMesage, it.c_str());
 			lenght += it.length();
 			namesToMesage[lenght++] = '\n';
 			namesToMesage[lenght++] = '\0';
 		}
 		fSuccess = WriteFile(
-			hPipe,        // handle to pipe 
-			namesToMesage,     // buffer to write from 
-			1000*sizeof(char), // number of bytes to write 
-			&cbWritten,   // number of bytes written 
-			NULL);        // not overlapped I/O 
+			hPipe,        // handle to pipe
+			namesToMesage,     // buffer to write from
+			1000*sizeof(char), // number of bytes to write
+			&cbWritten,   // number of bytes written
+			NULL);        // not overlapped I/O
 		LeaveCriticalSection(&CsNames);
 		if (!fSuccess)
 		{
@@ -351,6 +351,7 @@ VOID GetAnswerToRequest(LPTSTR pchRequest, LPTSTR pchReply, LPDWORD pchBytes)
 	// Проверка исходящего сообщения, чтобы убедиться, что это не слишком длинная для буфера.
 	if (FAILED(StringCchCopy(pchReply, 1024, L"Server get message )")))//Отправка ответа
 	{
+		
 		*pchBytes = 0;
 		pchReply[0] = 0;
 		printf("Failed to get message.\n");
