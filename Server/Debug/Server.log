@@ -1,2 +1,2 @@
-﻿  Server.cpp
-  Server.vcxproj -> G:\project\Server\Debug\Server.exe
+﻿C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppBuild.targets(452,5): warning MSB8028: The intermediate directory (Debug\) contains files shared from another project (Server.vcxproj).  This can lead to incorrect clean and rebuild behavior.
+  Server.vcxproj -> G:\project\WindowsService\Debug\WindowsService.exe
