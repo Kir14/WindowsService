@@ -1,4 +1,2 @@
 ﻿  Server.cpp
-G:\project\Server\Server\Server.cpp(199,55): warning C4474:  "printf" : для строки формата передано слишком много аргументов
-G:\project\Server\Server\Server.cpp(199,55): message :  заполнители и их параметры ожидают переменное число аргументов в количестве 0, но было предоставлено 1
   Server.vcxproj -> G:\project\Server\Debug\Server.exe

@@ -7,71 +7,27 @@
 #include <deque>
 
 
+void Connection();
+void ConnectionClient(SOCKET);
+void SendMessageToClient(char*);
 void Pipes();
 DWORD WINAPI InstanceThread(LPVOID);
 VOID GetAnswerToRequest(LPTSTR, LPTSTR , LPDWORD);
 
 
 SOCKET Connect;
-//SOCKET *Connections;
 std::deque<SOCKET> Connections;
 std::deque<std::string>names;
 SOCKET Listen;
 CRITICAL_SECTION CsConn;
 CRITICAL_SECTION CsNames;
 
-int ClientCount = 0;
+
 int ClientMax = 100;
-
-void SendMessageToClient(SOCKET Client)
-{
-	char buffer[1024];
-	for (;; Sleep(50))
-	{
-
-		
-
-		memset(buffer, 0, sizeof(buffer));
-		
-		if (recv(*std::find(Connections.begin(), Connections.end(), Client), buffer, 1024, NULL) != SOCKET_ERROR)
-		{
-			EnterCriticalSection(&CsConn);
-			printf(buffer);
-			printf("\n");
-			for (SOCKET sk : Connections)
-			{
-				send(sk, buffer, strlen(buffer), NULL);
-
-			}
-			
-		}
-		else
-		{
-			auto it = std::find(Connections.begin(), Connections.end(), Client);
-			EnterCriticalSection(&CsNames);
-			names.erase(names.begin() + (it - Connections.begin()));
-			LeaveCriticalSection(&CsNames);
-			EnterCriticalSection(&CsConn);
-			closesocket(*it);
-			Connections.erase(it);
-			LeaveCriticalSection(&CsConn);
-			printf("Disconnect\n");
-			return;
-		}
-
-	}
-	//delete []buffer;
-}
-
 
 int main()
 {
-	WSADATA data;
-	WORD version = MAKEWORD(2, 2);
-	if (WSAStartup(version, &data))
-	{
-		return 1;
-	}
+	
 	InitializeCriticalSection(&CsConn);
 	InitializeCriticalSection(&CsNames);
 
@@ -83,7 +39,44 @@ int main()
 		0,                 // not suspended 
 		NULL);      // возврат id потока
 
-	/* 
+	Connection();
+	
+	while (true)
+	{
+		char Hello[200] = "";
+		char buffer[100];
+		Sleep(50);
+		if (Connect = accept(Listen, NULL, NULL))
+		{
+			recv(Connect, buffer, 100, NULL);
+
+			EnterCriticalSection(&CsConn);
+			Connections.push_back(Connect);
+			LeaveCriticalSection(&CsConn);
+
+			EnterCriticalSection(&CsNames);
+			names.push_back(buffer);
+			LeaveCriticalSection(&CsNames);
+
+			strcat_s(Hello, buffer);
+			strcat_s(Hello, " joined the chat");
+			SendMessageToClient(Hello);
+
+			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
+		}
+
+	}
+
+	names.clear();
+	Connections.clear();
+	return 0;
+}
+
+
+void Connection()
+{
+
+	/*
 	if (FAILED (WSAStartup (MAKEWORD( 2, 2 ), &data) ) )
 	{
 	  // Error...
@@ -91,6 +84,13 @@ int main()
 	  //...
 	}
 	*/
+
+	WSADATA data;
+	WORD version = MAKEWORD(2, 2);
+	if (WSAStartup(version, &data))
+	{
+		return;
+	}
 
 	sockaddr_in SAddr;
 	ZeroMemory(&SAddr, sizeof(SAddr));
@@ -107,36 +107,58 @@ int main()
 
 	listen(Listen, ClientMax);
 	printf("Start server...\n");
-	
-	while (true)
-	{
-		char Hello[200] = "HEllo ";
-		char buffer[100];
-		Sleep(50);
-		if (Connect = accept(Listen, NULL, NULL))
-		{
-			
-			printf("Client connect\n");
-			//Connections[ClientCount] = Connect;
-			EnterCriticalSection(&CsConn);
-			recv(Connect, buffer, 100, NULL);
-			Connections.push_back(Connect);
-			names.push_back(buffer);
-			strcat_s(Hello, 100, buffer);
-			send(Connect, Hello, strlen(Hello), NULL);
-			LeaveCriticalSection(&CsConn);
-			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)SendMessageToClient, (LPVOID)Connect, NULL, NULL);
-			ClientCount++;
+	return;
+}
 
+void ConnectionClient(SOCKET Client)
+{
+	char buffer[1024];
+	for (;; Sleep(50))
+	{
+
+		memset(buffer, 0, sizeof(buffer));
+
+		if (recv(*std::find(Connections.begin(), Connections.end(), Client), buffer, 1024, NULL) != SOCKET_ERROR)
+		{
+			SendMessageToClient(buffer);
+		}
+		else
+		{
+			auto it = std::find(Connections.begin(), Connections.end(), Client);
+			strcat_s(buffer, names.at((it - Connections.begin())).c_str());
+			strcat_s(buffer, " disconnected from the chat");
+			SendMessageToClient(buffer);
+
+			EnterCriticalSection(&CsNames);
+			names.erase(names.begin() + (it - Connections.begin()));
+			LeaveCriticalSection(&CsNames);
+
+
+			EnterCriticalSection(&CsConn);
+			closesocket(*it);
+			Connections.erase(it);
+			LeaveCriticalSection(&CsConn);
+
+			return;
 		}
 
 	}
-
-	//delete []Connections;
-	Connections.clear();
-	return 0;
+	//delete []buffer;
 }
 
+
+void SendMessageToClient(char* buffer)
+{
+	EnterCriticalSection(&CsConn);
+	printf(buffer);
+	printf("\n");
+	for (SOCKET sk : Connections)
+	{
+		send(sk, buffer, strlen(buffer), NULL);
+
+	}
+	LeaveCriticalSection(&CsConn);
+}
 
 
 void Pipes()
@@ -294,7 +316,6 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			namesToMesage[lenght++] = '\n';
 			namesToMesage[lenght++] = '\0';
 		}
-		printf(namesToMesage);
 		fSuccess = WriteFile(
 			hPipe,        // handle to pipe 
 			namesToMesage,     // buffer to write from 
