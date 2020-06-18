@@ -36,27 +36,26 @@ void SendMessageToClient(SOCKET Client)
 		if (recv(*std::find(Connections.begin(), Connections.end(), Client), buffer, 1024, NULL) != SOCKET_ERROR)
 		{
 			EnterCriticalSection(&CsConn);
-			printf("\n");
 			printf(buffer);
+			printf("\n");
 			for (SOCKET sk : Connections)
 			{
 				send(sk, buffer, strlen(buffer), NULL);
 
 			}
-			LeaveCriticalSection(&CsConn);
+			
 		}
 		else
 		{
-			EnterCriticalSection(&CsNames);
-
-			ClientCount--;
 			auto it = std::find(Connections.begin(), Connections.end(), Client);
-			closesocket(*it);
+			EnterCriticalSection(&CsNames);
 			names.erase(names.begin() + (it - Connections.begin()));
-			Connections.erase(it);
 			LeaveCriticalSection(&CsNames);
-			printf("\n");
-			printf("Disconnect");
+			EnterCriticalSection(&CsConn);
+			closesocket(*it);
+			Connections.erase(it);
+			LeaveCriticalSection(&CsConn);
+			printf("Disconnect\n");
 			return;
 		}
 
@@ -84,7 +83,7 @@ int main()
 		0,                 // not suspended 
 		NULL);      // возврат id потока
 
-	/*   можно заменить
+	/* 
 	if (FAILED (WSAStartup (MAKEWORD( 2, 2 ), &data) ) )
 	{
 	  // Error...
@@ -93,9 +92,6 @@ int main()
 	}
 	*/
 
-	//Connections = new SOCKET[ClientMax];
-
-	// С сайта https://club.shelek.ru/viewart.php?id=35
 	sockaddr_in SAddr;
 	ZeroMemory(&SAddr, sizeof(SAddr));
 	// тип адреса (TCP/IP)
@@ -109,23 +105,8 @@ int main()
 	Listen = socket(AF_INET, SOCK_STREAM, 0);
 	bind(Listen, (sockaddr*)& SAddr, sizeof(SAddr));
 
-
-	// Из видео
-	/*
-	addrinfo hints, *rezult;
-	ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_flags = AI_PASSIVE;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-	GetAddrInfo(NULL, "7700", &hints, &rezult);
-	Listen = socket(rezult->ai_family, rezult->ai_socktype, rezult->ai_protocol);
-	bind(Listen, rezult->ai_addr, rezult->ai_addrlen);
-	freeaddrinfo(rezult);
-	*/
-
 	listen(Listen, ClientMax);
-	printf("Start server...");
+	printf("Start server...\n");
 	
 	while (true)
 	{
@@ -134,8 +115,8 @@ int main()
 		Sleep(50);
 		if (Connect = accept(Listen, NULL, NULL))
 		{
-			printf("\n");
-			printf("Client connect");
+			
+			printf("Client connect\n");
 			//Connections[ClientCount] = Connect;
 			EnterCriticalSection(&CsConn);
 			recv(Connect, buffer, 100, NULL);
@@ -213,7 +194,7 @@ void Pipes()
 
 			if (hThread == NULL)
 			{
-				printf("Failed to create a thread, GLE=%d.\n", GetLastError());
+				printf("Failed to create a thread\n");
 				return;
 			}
 
@@ -304,25 +285,26 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		//GetAnswerToRequest(pchRequest, pchReply, &cbReplyBytes);
 		// Запись ответа
 		EnterCriticalSection(&CsNames);
-		WCHAR namesToMesage[1000]=L"";
+		int lenght = 0;
+		char namesToMesage[1000]="";
 		for (auto it : names)
-		{
-			WCHAR buff[100]=L"";
-			MultiByteToWideChar(CP_ACP, 0, it.c_str(), it.size(), buff, 100);
-			wcscat_s(namesToMesage, buff);
-			wcscat_s(namesToMesage, L"\n");
+		{			
+			strcat_s(namesToMesage, it.c_str());
+			lenght += it.length();
+			namesToMesage[lenght++] = '\n';
+			namesToMesage[lenght++] = '\0';
 		}
-		
+		printf(namesToMesage);
 		fSuccess = WriteFile(
 			hPipe,        // handle to pipe 
 			namesToMesage,     // buffer to write from 
-			1000, // number of bytes to write 
+			1000*sizeof(char), // number of bytes to write 
 			&cbWritten,   // number of bytes written 
 			NULL);        // not overlapped I/O 
 		LeaveCriticalSection(&CsNames);
 		if (!fSuccess)
 		{
-			printf("InstanceThread WriteFile failed, GLE=%d.\n", GetLastError());
+			printf("PipeClient Disconnect\n");
 			break;
 		}
 	}
