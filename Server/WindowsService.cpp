@@ -43,26 +43,42 @@ int main()
 
 	while (true)
 	{
-		char Hello[200] = "";
-		char buffer[100];
+		
+		char buffer[100] ="";
 		Sleep(50);
 		if (Connect = accept(Listen, NULL, NULL))
 		{
 			recv(Connect, buffer, 100, NULL);
 
-			EnterCriticalSection(&CsConn);
-			Connections.push_back(Connect);
-			LeaveCriticalSection(&CsConn);
+			for (auto it : names)
+			{
+				if (!strcmp(buffer, it.c_str()))
+				{
+					strcpy_s(buffer,100 ,"-1");
+				}
+			}
+			if (!strcmp(buffer, "-1"))
+			{
+				send(Connect, "-1", strlen("-1"), NULL);
+				closesocket(Connect);
+			}
+			else
+			{
+				char Hello[200] = "";
+				EnterCriticalSection(&CsConn);
+				Connections.push_back(Connect);
+				LeaveCriticalSection(&CsConn);
 
-			EnterCriticalSection(&CsNames);
-			names.push_back(buffer);
-			LeaveCriticalSection(&CsNames);
+				EnterCriticalSection(&CsNames);
+				names.push_back(buffer);
+				LeaveCriticalSection(&CsNames);
 
-			strcat_s(Hello, buffer);
-			strcat_s(Hello, " joined the chat");
-			SendMessageToClient(Hello);
+				strcat_s(Hello, buffer);
+				strcat_s(Hello, " joined the chat");
+				SendMessageToClient(Hello);
 
-			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
+				CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
+			}
 		}
 
 	}
