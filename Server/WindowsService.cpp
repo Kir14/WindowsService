@@ -5,9 +5,13 @@
 
 #include <strsafe.h>
 #include <deque>
+#include <msxml6.h>
+#include <wx/wx.h>
+
 
 
 void Connection();
+void GetDataFromXml(wchar_t*&, int&);
 void ConnectionClient(SOCKET);
 void SendMessageToClient(char*);
 void Pipes();
@@ -34,10 +38,10 @@ int main()
 	CreateThread(
 		NULL,              // no security attribute
 		0,                 // default stack size
-		(LPTHREAD_START_ROUTINE)Pipes,    // функция обработки сообщений
-		NULL,    // параметр потока
+		(LPTHREAD_START_ROUTINE)Pipes,    // С„СѓРЅРєС†РёСЏ РѕР±СЂР°Р±РѕС‚РєРё СЃРѕРѕР±С‰РµРЅРёР№
+		NULL,    // РїР°СЂР°РјРµС‚СЂ РїРѕС‚РѕРєР°
 		0,                 // not suspended
-		NULL);      // возврат id потока
+		NULL);      // РІРѕР·РІСЂР°С‚ id РїРѕС‚РѕРєР°
 
 	Connection();
 
@@ -74,7 +78,7 @@ int main()
 				LeaveCriticalSection(&CsNames);
 
 				strcat_s(Hello, buffer);
-				strcat_s(Hello, " joined the chat");
+				strcat_s(Hello, " joined the chat\n");
 				SendMessageToClient(Hello);
 
 				CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
@@ -107,23 +111,34 @@ void Connection()
 	{
 		return;
 	}
+	wchar_t *server_ip;
+	int port;
+	GetDataFromXml(server_ip, port);
 
 	sockaddr_in SAddr;
 	ZeroMemory(&SAddr, sizeof(SAddr));
-	// тип адреса (TCP/IP)
+	// С‚РёРї Р°РґСЂРµСЃР° (TCP/IP)
 	SAddr.sin_family = AF_INET;
-	//адрес сервера. Т.к. TCP/IP представляет адреса в числовом виде, то для перевода
-	// адреса используем функцию inet_addr.
+	//Р°РґСЂРµСЃ СЃРµСЂРІРµСЂР°. Рў.Рє. TCP/IP РїСЂРµРґСЃС‚Р°РІР»СЏРµС‚ Р°РґСЂРµСЃР° РІ С‡РёСЃР»РѕРІРѕРј РІРёРґРµ, С‚Рѕ РґР»СЏ РїРµСЂРµРІРѕРґР°
+	// Р°РґСЂРµСЃР° РёСЃРїРѕР»СЊР·СѓРµРј С„СѓРЅРєС†РёСЋ inet_addr.
 	//SAddr.sin_addr.s_addr = inet_addr((char*)"127.0.0.1");
-	InetPton(AF_INET, (L"127.0.0.1"), &SAddr.sin_addr.s_addr);
-	// Порт. Используем функцию htons для перевода номера порта из обычного в //TCP/IP представление.
-	SAddr.sin_port = htons(8488);
+	InetPton(AF_INET, (server_ip), &SAddr.sin_addr.s_addr);
+	// РџРѕСЂС‚. РСЃРїРѕР»СЊР·СѓРµРј С„СѓРЅРєС†РёСЋ htons РґР»СЏ РїРµСЂРµРІРѕРґР° РЅРѕРјРµСЂР° РїРѕСЂС‚Р° РёР· РѕР±С‹С‡РЅРѕРіРѕ РІ //TCP/IP РїСЂРµРґСЃС‚Р°РІР»РµРЅРёРµ.
+	SAddr.sin_port = htons(port);
 	Listen = socket(AF_INET, SOCK_STREAM, 0);
 	bind(Listen, (sockaddr*)& SAddr, sizeof(SAddr));
 
 	listen(Listen, ClientMax);
 	printf("Start server...\n");
+
+	delete[]server_ip;
 	return;
+}
+
+void GetDataFromXml(wchar_t*& server_ip, int& port)
+{
+	wxXmlDocument* _file;
+
 }
 
 void ConnectionClient(SOCKET Client)
@@ -142,7 +157,7 @@ void ConnectionClient(SOCKET Client)
 		{
 			auto it = std::find(Connections.begin(), Connections.end(), Client);
 			strcat_s(buffer, names.at((it - Connections.begin())).c_str());
-			strcat_s(buffer, " disconnected from the chat");
+			strcat_s(buffer, " disconnected from the chat\n");
 			SendMessageToClient(buffer);
 
 			EnterCriticalSection(&CsNames);
@@ -167,7 +182,6 @@ void SendMessageToClient(char* buffer)
 {
 	EnterCriticalSection(&CsConn);
 	printf(buffer);
-	printf("\n");
 	for (SOCKET sk : Connections)
 	{
 		send(sk, buffer, strlen(buffer), NULL);
@@ -183,27 +197,27 @@ void Pipes()
 	DWORD  dwThreadId = 0;
 	HANDLE hPipe = INVALID_HANDLE_VALUE;
 	HANDLE hThread = NULL;
-	WCHAR pipename[80] = L"\\\\.\\pipe\\Server";//? Имя канала
+	WCHAR pipename[80] = L"\\\\.\\pipe\\Server";//? РРјСЏ РєР°РЅР°Р»Р°
 
-	// Основной цикл создает экземпляр именованного канала и
-	// Затем ждет клиент для подключения к нему. Когда клиент
-	// Подключается, создается поток для обработки сообщений
-	// С этого клиента, и этот цикл может свободно ждать
-	// Следующий клиент подключения запрос. Это бесконечный цикл.
+	// РћСЃРЅРѕРІРЅРѕР№ С†РёРєР» СЃРѕР·РґР°РµС‚ СЌРєР·РµРјРїР»СЏСЂ РёРјРµРЅРѕРІР°РЅРЅРѕРіРѕ РєР°РЅР°Р»Р° Рё
+	// Р—Р°С‚РµРј Р¶РґРµС‚ РєР»РёРµРЅС‚ РґР»СЏ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє РЅРµРјСѓ. РљРѕРіРґР° РєР»РёРµРЅС‚
+	// РџРѕРґРєР»СЋС‡Р°РµС‚СЃСЏ, СЃРѕР·РґР°РµС‚СЃСЏ РїРѕС‚РѕРє РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё СЃРѕРѕР±С‰РµРЅРёР№
+	// РЎ СЌС‚РѕРіРѕ РєР»РёРµРЅС‚Р°, Рё СЌС‚РѕС‚ С†РёРєР» РјРѕР¶РµС‚ СЃРІРѕР±РѕРґРЅРѕ Р¶РґР°С‚СЊ
+	// РЎР»РµРґСѓСЋС‰РёР№ РєР»РёРµРЅС‚ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Р·Р°РїСЂРѕСЃ. Р­С‚Рѕ Р±РµСЃРєРѕРЅРµС‡РЅС‹Р№ С†РёРєР».
 
 	for (;;)
 	{
 		hPipe = CreateNamedPipe(
-			pipename,             // имя канала
-			PIPE_ACCESS_DUPLEX,       // доступ на чтение\запись
-			PIPE_TYPE_MESSAGE |       // Тип сообщения трубы
-			PIPE_READMODE_MESSAGE |   // Режим чтения сообщение
-			PIPE_WAIT,                // режим блокировки
+			pipename,             // РёРјСЏ РєР°РЅР°Р»Р°
+			PIPE_ACCESS_DUPLEX,       // РґРѕСЃС‚СѓРї РЅР° С‡С‚РµРЅРёРµ\Р·Р°РїРёСЃСЊ
+			PIPE_TYPE_MESSAGE |       // РўРёРї СЃРѕРѕР±С‰РµРЅРёСЏ С‚СЂСѓР±С‹
+			PIPE_READMODE_MESSAGE |   // Р РµР¶РёРј С‡С‚РµРЅРёСЏ СЃРѕРѕР±С‰РµРЅРёРµ
+			PIPE_WAIT,                // СЂРµР¶РёРј Р±Р»РѕРєРёСЂРѕРІРєРё
 			PIPE_UNLIMITED_INSTANCES, // max. instances
-			1024,                  // Размер выходного буфера
-			1024,                  // Размер входного буфера
-			0,                        // Значение времени ожидания
-			NULL);                    //атрибуты
+			1024,                  // Р Р°Р·РјРµСЂ РІС‹С…РѕРґРЅРѕРіРѕ Р±СѓС„РµСЂР°
+			1024,                  // Р Р°Р·РјРµСЂ РІС…РѕРґРЅРѕРіРѕ Р±СѓС„РµСЂР°
+			0,                        // Р—РЅР°С‡РµРЅРёРµ РІСЂРµРјРµРЅРё РѕР¶РёРґР°РЅРёСЏ
+			NULL);                    //Р°С‚СЂРёР±СѓС‚С‹
 
 		if (hPipe == INVALID_HANDLE_VALUE)
 		{
@@ -211,9 +225,9 @@ void Pipes()
 			return ;
 		}
 
-		// Ожидание клиента для подключения; если это удастся,
-		// функция возвращает ненулевое значение. Если функция
-		// возвращает ноль, GetLastError возвращает ERROR_PIPE подключены.
+		// РћР¶РёРґР°РЅРёРµ РєР»РёРµРЅС‚Р° РґР»СЏ РїРѕРґРєР»СЋС‡РµРЅРёСЏ; РµСЃР»Рё СЌС‚Рѕ СѓРґР°СЃС‚СЃСЏ,
+		// С„СѓРЅРєС†РёСЏ РІРѕР·РІСЂР°С‰Р°РµС‚ РЅРµРЅСѓР»РµРІРѕРµ Р·РЅР°С‡РµРЅРёРµ. Р•СЃР»Рё С„СѓРЅРєС†РёСЏ
+		// РІРѕР·РІСЂР°С‰Р°РµС‚ РЅРѕР»СЊ, GetLastError РІРѕР·РІСЂР°С‰Р°РµС‚ ERROR_PIPE РїРѕРґРєР»СЋС‡РµРЅС‹.
 
 		fConnected = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
 
@@ -221,14 +235,14 @@ void Pipes()
 		{
 			printf("PipeClient connect\n");
 
-			// Создаем поток для этого клиента.
+			// РЎРѕР·РґР°РµРј РїРѕС‚РѕРє РґР»СЏ СЌС‚РѕРіРѕ РєР»РёРµРЅС‚Р°.
 			hThread = CreateThread(
 				NULL,              // no security attribute
 				0,                 // default stack size
-				InstanceThread,    // функция обработки сообщений
-				(LPVOID)hPipe,    // параметр потока
+				InstanceThread,    // С„СѓРЅРєС†РёСЏ РѕР±СЂР°Р±РѕС‚РєРё СЃРѕРѕР±С‰РµРЅРёР№
+				(LPVOID)hPipe,    // РїР°СЂР°РјРµС‚СЂ РїРѕС‚РѕРєР°
 				0,                 // not suspended
-				&dwThreadId);      // возврат id потока
+				&dwThreadId);      // РІРѕР·РІСЂР°С‚ id РїРѕС‚РѕРєР°
 
 			if (hThread == NULL)
 			{
@@ -239,28 +253,28 @@ void Pipes()
 			else CloseHandle(hThread);
 		}
 		else
-			// Ошибка подключения
+			// РћС€РёР±РєР° РїРѕРґРєР»СЋС‡РµРЅРёСЏ
 			CloseHandle(hPipe);
 	}
 }
 
 DWORD WINAPI InstanceThread(LPVOID lpvParam)
-// Эта процедура является функцией обработки нити для чтения и ответа для клиента
-// С помощью подключения к открытой трубе передается от основного цикла. Обратите внимание, это позволяет
-// Основной цикл продолжить выполнение, потенциально создавая больше потоков
-// Этой процедуры могут работать одновременно, в зависимости от количества поступающих
-// Клиентские соединения.
+// Р­С‚Р° РїСЂРѕС†РµРґСѓСЂР° СЏРІР»СЏРµС‚СЃСЏ С„СѓРЅРєС†РёРµР№ РѕР±СЂР°Р±РѕС‚РєРё РЅРёС‚Рё РґР»СЏ С‡С‚РµРЅРёСЏ Рё РѕС‚РІРµС‚Р° РґР»СЏ РєР»РёРµРЅС‚Р°
+// РЎ РїРѕРјРѕС‰СЊСЋ РїРѕРґРєР»СЋС‡РµРЅРёСЏ Рє РѕС‚РєСЂС‹С‚РѕР№ С‚СЂСѓР±Рµ РїРµСЂРµРґР°РµС‚СЃСЏ РѕС‚ РѕСЃРЅРѕРІРЅРѕРіРѕ С†РёРєР»Р°. РћР±СЂР°С‚РёС‚Рµ РІРЅРёРјР°РЅРёРµ, СЌС‚Рѕ РїРѕР·РІРѕР»СЏРµС‚
+// РћСЃРЅРѕРІРЅРѕР№ С†РёРєР» РїСЂРѕРґРѕР»Р¶РёС‚СЊ РІС‹РїРѕР»РЅРµРЅРёРµ, РїРѕС‚РµРЅС†РёР°Р»СЊРЅРѕ СЃРѕР·РґР°РІР°СЏ Р±РѕР»СЊС€Рµ РїРѕС‚РѕРєРѕРІ
+// Р­С‚РѕР№ РїСЂРѕС†РµРґСѓСЂС‹ РјРѕРіСѓС‚ СЂР°Р±РѕС‚Р°С‚СЊ РѕРґРЅРѕРІСЂРµРјРµРЅРЅРѕ, РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РєРѕР»РёС‡РµСЃС‚РІР° РїРѕСЃС‚СѓРїР°СЋС‰РёС…
+// РљР»РёРµРЅС‚СЃРєРёРµ СЃРѕРµРґРёРЅРµРЅРёСЏ.
 {
-	HANDLE hHeap = GetProcessHeap();//Получаем кучу
-	TCHAR* pchRequest = (TCHAR*)HeapAlloc(hHeap, 0, 1024 * sizeof(TCHAR));//Выделяем в ней память
-	TCHAR* pchReply = (TCHAR*)HeapAlloc(hHeap, 0, 1024 * sizeof(TCHAR));//Выделяем в ней память
+	HANDLE hHeap = GetProcessHeap();//РџРѕР»СѓС‡Р°РµРј РєСѓС‡Сѓ
+	TCHAR* pchRequest = (TCHAR*)HeapAlloc(hHeap, 0, 1024 * sizeof(TCHAR));//Р’С‹РґРµР»СЏРµРј РІ РЅРµР№ РїР°РјСЏС‚СЊ
+	TCHAR* pchReply = (TCHAR*)HeapAlloc(hHeap, 0, 1024 * sizeof(TCHAR));//Р’С‹РґРµР»СЏРµРј РІ РЅРµР№ РїР°РјСЏС‚СЊ
 
 	DWORD cbBytesRead = 0, cbReplyBytes = 0, cbWritten = 0;
 	BOOL fSuccess = FALSE;
 	HANDLE hPipe = NULL;
 
-	// Сделать некоторые дополнительные проверки с приложением ошибку будет продолжать работать, даже если это
-	// поток не удается.
+	// РЎРґРµР»Р°С‚СЊ РЅРµРєРѕС‚РѕСЂС‹Рµ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РїСЂРѕРІРµСЂРєРё СЃ РїСЂРёР»РѕР¶РµРЅРёРµРј РѕС€РёР±РєСѓ Р±СѓРґРµС‚ РїСЂРѕРґРѕР»Р¶Р°С‚СЊ СЂР°Р±РѕС‚Р°С‚СЊ, РґР°Р¶Рµ РµСЃР»Рё СЌС‚Рѕ
+	// РїРѕС‚РѕРє РЅРµ СѓРґР°РµС‚СЃСЏ.
 
 	if (lpvParam == NULL)
 	{
@@ -292,14 +306,14 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 
 	printf("Tread create, ready  to work.\n");
 
-	// Параметр потоков представляет собой дескриптор экземпляра объекта трубы.
+	// РџР°СЂР°РјРµС‚СЂ РїРѕС‚РѕРєРѕРІ РїСЂРµРґСЃС‚Р°РІР»СЏРµС‚ СЃРѕР±РѕР№ РґРµСЃРєСЂРёРїС‚РѕСЂ СЌРєР·РµРјРїР»СЏСЂР° РѕР±СЉРµРєС‚Р° С‚СЂСѓР±С‹.
 	hPipe = (HANDLE)lpvParam;
 
-	// Цикл, пока не закончится чтение
+	// Р¦РёРєР», РїРѕРєР° РЅРµ Р·Р°РєРѕРЅС‡РёС‚СЃСЏ С‡С‚РµРЅРёРµ
 	while (1)
 	{
 		Sleep(500);
-		// Читаем клиентские запросы из трубы. Это упрощенное код позволяет только только сообщения
+		// Р§РёС‚Р°РµРј РєР»РёРµРЅС‚СЃРєРёРµ Р·Р°РїСЂРѕСЃС‹ РёР· С‚СЂСѓР±С‹. Р­С‚Рѕ СѓРїСЂРѕС‰РµРЅРЅРѕРµ РєРѕРґ РїРѕР·РІРѕР»СЏРµС‚ С‚РѕР»СЊРєРѕ С‚РѕР»СЊРєРѕ СЃРѕРѕР±С‰РµРЅРёСЏ
 		/*fSuccess = ReadFile(
 			hPipe,        // handle to pipe
 			pchRequest,    // buffer to receive data
@@ -319,9 +333,9 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			}
 			break;
 		}*/
-		// Обработка входящих сообщений.
+		// РћР±СЂР°Р±РѕС‚РєР° РІС…РѕРґСЏС‰РёС… СЃРѕРѕР±С‰РµРЅРёР№.
 		//GetAnswerToRequest(pchRequest, pchReply, &cbReplyBytes);
-		// Запись ответа
+		// Р—Р°РїРёСЃСЊ РѕС‚РІРµС‚Р°
 		EnterCriticalSection(&CsNames);
 		int lenght = 0;
 		char namesToMesage[1000]="";
@@ -346,7 +360,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		}
 	}
 
-	// Очищаем все переменные и закрываем канал
+	// РћС‡РёС‰Р°РµРј РІСЃРµ РїРµСЂРµРјРµРЅРЅС‹Рµ Рё Р·Р°РєСЂС‹РІР°РµРј РєР°РЅР°Р»
 	FlushFileBuffers(hPipe);
 	DisconnectNamedPipe(hPipe);
 	CloseHandle(hPipe);
@@ -356,16 +370,16 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 }
 
 VOID GetAnswerToRequest(LPTSTR pchRequest, LPTSTR pchReply, LPDWORD pchBytes)
-// Эта процедура является простой функцией для печати запрос клиента к консоли
-// И заполнить ответный буфер со строкой данных по умолчанию. Это где вы
-// Поставил бы реально запроса клиента код обработки, которая работает в контексте
-// Экземпляра потока. Имейте в виду, основной поток будет продолжать ждать
-// И получить другие клиентские подключения, когда экземпляр нить работает.
+// Р­С‚Р° РїСЂРѕС†РµРґСѓСЂР° СЏРІР»СЏРµС‚СЃСЏ РїСЂРѕСЃС‚РѕР№ С„СѓРЅРєС†РёРµР№ РґР»СЏ РїРµС‡Р°С‚Рё Р·Р°РїСЂРѕСЃ РєР»РёРµРЅС‚Р° Рє РєРѕРЅСЃРѕР»Рё
+// Р Р·Р°РїРѕР»РЅРёС‚СЊ РѕС‚РІРµС‚РЅС‹Р№ Р±СѓС„РµСЂ СЃРѕ СЃС‚СЂРѕРєРѕР№ РґР°РЅРЅС‹С… РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ. Р­С‚Рѕ РіРґРµ РІС‹
+// РџРѕСЃС‚Р°РІРёР» Р±С‹ СЂРµР°Р»СЊРЅРѕ Р·Р°РїСЂРѕСЃР° РєР»РёРµРЅС‚Р° РєРѕРґ РѕР±СЂР°Р±РѕС‚РєРё, РєРѕС‚РѕСЂР°СЏ СЂР°Р±РѕС‚Р°РµС‚ РІ РєРѕРЅС‚РµРєСЃС‚Рµ
+// Р­РєР·РµРјРїР»СЏСЂР° РїРѕС‚РѕРєР°. РРјРµР№С‚Рµ РІ РІРёРґСѓ, РѕСЃРЅРѕРІРЅРѕР№ РїРѕС‚РѕРє Р±СѓРґРµС‚ РїСЂРѕРґРѕР»Р¶Р°С‚СЊ Р¶РґР°С‚СЊ
+// Р РїРѕР»СѓС‡РёС‚СЊ РґСЂСѓРіРёРµ РєР»РёРµРЅС‚СЃРєРёРµ РїРѕРґРєР»СЋС‡РµРЅРёСЏ, РєРѕРіРґР° СЌРєР·РµРјРїР»СЏСЂ РЅРёС‚СЊ СЂР°Р±РѕС‚Р°РµС‚.
 {
-	//printf("Message from PipeClient: %ws\n", pchRequest);//Это сообщение от клиента
+	//printf("Message from PipeClient: %ws\n", pchRequest);//Р­С‚Рѕ СЃРѕРѕР±С‰РµРЅРёРµ РѕС‚ РєР»РёРµРЅС‚Р°
 
-	// Проверка исходящего сообщения, чтобы убедиться, что это не слишком длинная для буфера.
-	if (FAILED(StringCchCopy(pchReply, 1024, L"Server get message )")))//Отправка ответа
+	// РџСЂРѕРІРµСЂРєР° РёСЃС…РѕРґСЏС‰РµРіРѕ СЃРѕРѕР±С‰РµРЅРёСЏ, С‡С‚РѕР±С‹ СѓР±РµРґРёС‚СЊСЃСЏ, С‡С‚Рѕ СЌС‚Рѕ РЅРµ СЃР»РёС€РєРѕРј РґР»РёРЅРЅР°СЏ РґР»СЏ Р±СѓС„РµСЂР°.
+	if (FAILED(StringCchCopy(pchReply, 1024, L"Server get message )")))//РћС‚РїСЂР°РІРєР° РѕС‚РІРµС‚Р°
 	{
 		
 		*pchBytes = 0;
