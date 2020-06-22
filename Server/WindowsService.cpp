@@ -12,6 +12,7 @@
 
 void Connection();		//Задание порта и адресса сервера
 void GetDataFromXml(std::string&, int&);	//Извлечение данных из xml
+void ListenConnection();					//Прослушивание подключений к серверу
 void ConnectionClient(SOCKET);				//Ф-ция для потока прослушивания клиента
 void SendMessageToClient(char*);			//Рассылка сообщений клиентам
 void Pipes();								
@@ -27,13 +28,15 @@ CRITICAL_SECTION CsConn;
 CRITICAL_SECTION CsNames;
 
 
-int ClientMax = 100;
+int ClientMax;
 
 int main()
 {
 
 	InitializeCriticalSection(&CsConn);
 	InitializeCriticalSection(&CsNames);
+
+
 
 	CreateThread(
 		NULL,              // no security attribute
@@ -45,47 +48,7 @@ int main()
 
 	Connection();
 
-	while (true)
-	{
-
-		char buffer[100] = "";
-		Sleep(50);
-		if (Connect = accept(Listen, NULL, NULL))
-		{
-			recv(Connect, buffer, 100, NULL);
-
-			for (auto it : names)
-			{
-				if (!strcmp(buffer, it.c_str()))
-				{
-					strcpy_s(buffer, 100, "-1");
-				}
-			}
-			if (!strcmp(buffer, "-1"))
-			{
-				send(Connect, "-1", strlen("-1"), NULL);
-				closesocket(Connect);
-			}
-			else
-			{
-				char Hello[200] = "";
-				EnterCriticalSection(&CsConn);
-				Connections.push_back(Connect);
-				LeaveCriticalSection(&CsConn);
-
-				EnterCriticalSection(&CsNames);
-				names.push_back(buffer);
-				LeaveCriticalSection(&CsNames);
-
-				strcat_s(Hello, buffer);
-				strcat_s(Hello, " joined the chat\n");
-				SendMessageToClient(Hello);
-
-				CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
-			}
-		}
-
-	}
+	ListenConnection();
 
 	names.clear();
 	Connections.clear();
@@ -122,7 +85,7 @@ void Connection()
 	//адрес сервера. Т.к. TCP/IP представляет адреса в числовом виде, то для перевода
 	// адреса используем функцию inet_addr.
 	//SAddr.sin_addr.s_addr = inet_addr((char*)"127.0.0.1");
-	std::cout << "IP: " << server_ip.c_str() << "  Port: " << port << std::endl;
+	std::cout << "IP: " << server_ip.c_str() << "  Port: " << port<<"  MaxClients: "<<ClientMax << std::endl;
 
 	inet_pton(AF_INET, (server_ip.c_str()), &SAddr.sin_addr.s_addr);
 	// Порт. Используем функцию htons для перевода номера порта из обычного в //TCP/IP представление.
@@ -145,7 +108,54 @@ void GetDataFromXml(std::string &server_ip, int& port)
 	pugi::xml_node server;
 	server_ip= chat.child("server_ip").text().as_string();
 	port= chat.child("port").text().as_int();
+	ClientMax= chat.child("clients").text().as_int();
 }
+
+
+//Прослушивание подключений к серверу
+void ListenConnection()
+{
+	while (true)
+	{
+		char buffer[100] = "";
+		Sleep(50);
+		if (Connect = accept(Listen, NULL, NULL))
+		{
+			recv(Connect, buffer, 100, NULL);
+
+			for (auto it : names)
+			{
+				if (!strcmp(buffer, it.c_str()))
+				{
+					strcpy_s(buffer, 100, "-1");
+				}
+			}
+			if (!strcmp(buffer, "-1"))
+			{
+				send(Connect, "-1", strlen("-1"), NULL);
+				closesocket(Connect);
+			}
+			else
+			{
+				char Hello[200] = "";
+				EnterCriticalSection(&CsConn);
+				Connections.push_back(Connect);
+				LeaveCriticalSection(&CsConn);
+
+				EnterCriticalSection(&CsNames);
+				names.push_back(buffer);
+				LeaveCriticalSection(&CsNames);
+
+				strcat_s(Hello, buffer);
+				strcat_s(Hello, " joined the chat\n");
+				SendMessageToClient(Hello);
+
+				CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
+			}
+		}
+	}
+}
+
 
 //Ф-ция для потока прослушивания клиента
 void ConnectionClient(SOCKET Client)
