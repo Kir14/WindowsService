@@ -5,18 +5,18 @@
 
 #include <strsafe.h>
 #include <deque>
-#include <msxml6.h>
-#include <wx/wx.h>
+
+#include "pugixml.hpp"
 
 
 
-void Connection();
-void GetDataFromXml(wchar_t*&, int&);
-void ConnectionClient(SOCKET);
-void SendMessageToClient(char*);
-void Pipes();
+void Connection();		//Задание порта и адресса сервера
+void GetDataFromXml(std::string&, int&);	//Извлечение данных из xml
+void ConnectionClient(SOCKET);				//Ф-ция для потока прослушивания клиента
+void SendMessageToClient(char*);			//Рассылка сообщений клиентам
+void Pipes();								
 DWORD WINAPI InstanceThread(LPVOID);
-VOID GetAnswerToRequest(LPTSTR, LPTSTR , LPDWORD);
+VOID GetAnswerToRequest(LPTSTR, LPTSTR, LPDWORD);
 
 
 SOCKET Connect;
@@ -47,8 +47,8 @@ int main()
 
 	while (true)
 	{
-		
-		char buffer[100] ="";
+
+		char buffer[100] = "";
 		Sleep(50);
 		if (Connect = accept(Listen, NULL, NULL))
 		{
@@ -58,7 +58,7 @@ int main()
 			{
 				if (!strcmp(buffer, it.c_str()))
 				{
-					strcpy_s(buffer,100 ,"-1");
+					strcpy_s(buffer, 100, "-1");
 				}
 			}
 			if (!strcmp(buffer, "-1"))
@@ -111,7 +111,7 @@ void Connection()
 	{
 		return;
 	}
-	wchar_t *server_ip;
+	std::string server_ip;
 	int port;
 	GetDataFromXml(server_ip, port);
 
@@ -122,7 +122,9 @@ void Connection()
 	//адрес сервера. Т.к. TCP/IP представляет адреса в числовом виде, то для перевода
 	// адреса используем функцию inet_addr.
 	//SAddr.sin_addr.s_addr = inet_addr((char*)"127.0.0.1");
-	InetPton(AF_INET, (server_ip), &SAddr.sin_addr.s_addr);
+	std::cout << "IP: " << server_ip.c_str() << "  Port: " << port << std::endl;
+
+	inet_pton(AF_INET, (server_ip.c_str()), &SAddr.sin_addr.s_addr);
 	// Порт. Используем функцию htons для перевода номера порта из обычного в //TCP/IP представление.
 	SAddr.sin_port = htons(port);
 	Listen = socket(AF_INET, SOCK_STREAM, 0);
@@ -131,16 +133,21 @@ void Connection()
 	listen(Listen, ClientMax);
 	printf("Start server...\n");
 
-	delete[]server_ip;
+
 	return;
 }
-
-void GetDataFromXml(wchar_t*& server_ip, int& port)
+//Извлечь данные из xml
+void GetDataFromXml(std::string &server_ip, int& port)
 {
-	wxXmlDocument* _file;
-
+	pugi::xml_document doc;
+	doc.load_file("G:\\project\\Chat_Server.xml");
+	pugi::xml_node chat = doc.child("chat_server");
+	pugi::xml_node server;
+	server_ip= chat.child("server_ip").text().as_string();
+	port= chat.child("port").text().as_int();
 }
 
+//Ф-ция для потока прослушивания клиента
 void ConnectionClient(SOCKET Client)
 {
 	char buffer[1024];
@@ -177,7 +184,7 @@ void ConnectionClient(SOCKET Client)
 	//delete []buffer;
 }
 
-
+//Рассылка сообщений клиентам
 void SendMessageToClient(char* buffer)
 {
 	EnterCriticalSection(&CsConn);
@@ -222,7 +229,7 @@ void Pipes()
 		if (hPipe == INVALID_HANDLE_VALUE)
 		{
 			printf("Failed to create a pipe channel\n");
-			return ;
+			return;
 		}
 
 		// Ожидание клиента для подключения; если это удастся,
@@ -338,7 +345,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		// Запись ответа
 		EnterCriticalSection(&CsNames);
 		int lenght = 0;
-		char namesToMesage[1000]="";
+		char namesToMesage[1000] = "";
 		for (auto it : names)
 		{
 			strcat_s(namesToMesage, it.c_str());
@@ -349,7 +356,7 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		fSuccess = WriteFile(
 			hPipe,        // handle to pipe
 			namesToMesage,     // buffer to write from
-			1000*sizeof(char), // number of bytes to write
+			1000 * sizeof(char), // number of bytes to write
 			&cbWritten,   // number of bytes written
 			NULL);        // not overlapped I/O
 		LeaveCriticalSection(&CsNames);
@@ -381,7 +388,7 @@ VOID GetAnswerToRequest(LPTSTR pchRequest, LPTSTR pchReply, LPDWORD pchBytes)
 	// Проверка исходящего сообщения, чтобы убедиться, что это не слишком длинная для буфера.
 	if (FAILED(StringCchCopy(pchReply, 1024, L"Server get message )")))//Отправка ответа
 	{
-		
+
 		*pchBytes = 0;
 		pchReply[0] = 0;
 		printf("Failed to get message.\n");
