@@ -2,12 +2,11 @@
 #include <WinSock2.h>
 #include <iostream>
 #include <WS2tcpip.h>
-
 #include <strsafe.h>
 #include <deque>
-
 #include "pugixml.hpp"
 
+#include "Service.h"
 
 
 void Connection();		//Задание порта и адресса сервера
@@ -26,19 +25,19 @@ std::deque<std::string>names;
 SOCKET Listen;
 CRITICAL_SECTION CsConn;
 CRITICAL_SECTION CsNames;
-
-
 int ClientMax;
 
-int main()
+
+
+int main(int argc, char* argv[])
 {
 
 	InitializeCriticalSection(&CsConn);
 	InitializeCriticalSection(&CsNames);
 
-
-
-	CreateThread(
+	Service(argc, argv);
+	
+	/*CreateThread(
 		NULL,              // no security attribute
 		0,                 // default stack size
 		(LPTHREAD_START_ROUTINE)Pipes,    // функция обработки сообщений
@@ -48,7 +47,7 @@ int main()
 
 	Connection();
 
-	ListenConnection();
+	ListenConnection();*/
 
 	names.clear();
 	Connections.clear();
