@@ -1,4 +1,5 @@
 #pragma once
+#include <WinSock2.h>
 #define serviceName TEXT("CHAT_SERVER")
 
 
@@ -160,7 +161,6 @@ int RemoveService() {
 
 int StartService() 
 {
-	addLogMessage("Ey Start\n");
 	SC_HANDLE hSCManager = OpenSCManager(NULL, NULL, SC_MANAGER_CREATE_SERVICE);
 	SC_HANDLE hService = OpenService(hSCManager, serviceName, SERVICE_START);
 	if (!StartService(hService, 0, NULL)) {
@@ -171,6 +171,7 @@ int StartService()
 
 	CloseServiceHandle(hService);
 	CloseServiceHandle(hSCManager);
+	addLogMessage("Ey Start\n");				
 	return 0;
 }
 
