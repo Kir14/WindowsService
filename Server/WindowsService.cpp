@@ -6,7 +6,6 @@
 
 SERVICE_STATUS        g_ServiceStatus = { 0 };
 SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
-HANDLE                g_ServiceStopEvent = INVALID_HANDLE_VALUE;
 
 VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv);
 VOID WINAPI ServiceCtrlHandler(DWORD);
@@ -26,6 +25,14 @@ int main(int argc, char* argv[])
 	{
 		return GetLastError();
 	}
+
+
+	/*HANDLE hThread = CreateThread(NULL, 0, ServiceWorkerThread, NULL, 0, NULL);
+	while (true)
+	{
+
+	}
+	*/
 
 	return 0;
 }
