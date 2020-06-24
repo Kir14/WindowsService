@@ -159,11 +159,15 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 
 DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
 {
+	Server();
+
 	//  Periodically check if the service has been requested to stop
 	while (WaitForSingleObject(g_ServiceStopEvent, 0) != WAIT_OBJECT_0)
 	{
-		Server();
+		ListenConnection();
 	}
+
+	StopServer();
 
 	return ERROR_SUCCESS;
 }

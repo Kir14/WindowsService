@@ -14,10 +14,10 @@ void GetDataFromXml(std::string&, int&);	//Извлечение данных из xml
 void ListenConnection();					//Прослушивание подключений к серверу
 void ConnectionClient(SOCKET);				//Ф-ция для потока прослушивания клиента
 void SendMessageToClient(char*);			//Рассылка сообщений клиентам
+void StopServer();
 void Pipes();
 DWORD WINAPI InstanceThread(LPVOID);
 VOID GetAnswerToRequest(LPTSTR, LPTSTR, LPDWORD);
-
 
 SOCKET Connect;
 std::deque<SOCKET> Connections;
@@ -45,10 +45,6 @@ int Server()
 
 	Connection();
 
-	ListenConnection();
-
-	names.clear();
-	Connections.clear();
 	return 0;
 }
 
@@ -112,43 +108,41 @@ void GetDataFromXml(std::string& server_ip, int& port)
 //Прослушивание подключений к серверу
 void ListenConnection()
 {
-	while (true)
+
+	char buffer[100] = "";
+	Sleep(50);
+	if (Connect = accept(Listen, NULL, NULL))
 	{
-		char buffer[100] = "";
-		Sleep(50);
-		if (Connect = accept(Listen, NULL, NULL))
+		recv(Connect, buffer, 100, NULL);
+
+		for (auto it : names)
 		{
-			recv(Connect, buffer, 100, NULL);
-
-			for (auto it : names)
+			if (!strcmp(buffer, it.c_str()))
 			{
-				if (!strcmp(buffer, it.c_str()))
-				{
-					strcpy_s(buffer, 100, "-1");
-				}
+				strcpy_s(buffer, 100, "-1");
 			}
-			if (!strcmp(buffer, "-1"))
-			{
-				send(Connect, "-1", strlen("-1"), NULL);
-				closesocket(Connect);
-			}
-			else
-			{
-				char Hello[200] = "";
-				EnterCriticalSection(&CsConn);
-				Connections.push_back(Connect);
-				LeaveCriticalSection(&CsConn);
+		}
+		if (!strcmp(buffer, "-1"))
+		{
+			send(Connect, "-1", strlen("-1"), NULL);
+			closesocket(Connect);
+		}
+		else
+		{
+			char Hello[200] = "";
+			EnterCriticalSection(&CsConn);
+			Connections.push_back(Connect);
+			LeaveCriticalSection(&CsConn);
 
-				EnterCriticalSection(&CsNames);
-				names.push_back(buffer);
-				LeaveCriticalSection(&CsNames);
+			EnterCriticalSection(&CsNames);
+			names.push_back(buffer);
+			LeaveCriticalSection(&CsNames);
 
-				strcat_s(Hello, buffer);
-				strcat_s(Hello, " joined the chat\n");
-				SendMessageToClient(Hello);
+			strcat_s(Hello, buffer);
+			strcat_s(Hello, " joined the chat\n");
+			SendMessageToClient(Hello);
 
-				CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
-			}
+			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
 		}
 	}
 }
@@ -202,6 +196,25 @@ void SendMessageToClient(char* buffer)
 
 	}
 	LeaveCriticalSection(&CsConn);
+}
+
+
+void StopServer()
+{
+	EnterCriticalSection(&CsConn);
+	for (auto sk : Connections)
+	{
+		send(sk, "Server Stop", strlen("Server Stop"), NULL);
+		closesocket(sk);
+		Connections.erase(Connections.begin());
+	}
+	LeaveCriticalSection(&CsConn);
+
+
+	EnterCriticalSection(&CsNames);
+	names.clear();
+	LeaveCriticalSection(&CsNames);
+
 }
 
 
