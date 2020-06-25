@@ -3,7 +3,6 @@
 #include "Server.h"
 
 
-
 SERVICE_STATUS        g_ServiceStatus = { 0 };
 SERVICE_STATUS_HANDLE g_StatusHandle = NULL;
 
@@ -15,6 +14,12 @@ DWORD WINAPI ServiceWorkerThread(LPVOID lpParam);
 
 int main(int argc, char* argv[])
 {
+	FILE* LogFile;
+	fopen_s(&LogFile, "G:\\project\\logs\\main.log", "a");
+	fprintf(LogFile, "main Start\n");
+	fclose(LogFile);
+
+
 	SERVICE_TABLE_ENTRY ServiceTable[] =
 	{
 		{(LPWSTR)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
@@ -33,6 +38,9 @@ int main(int argc, char* argv[])
 
 	}
 	*/
+	fopen_s(&LogFile, "G:\\project\\logs\\main.log", "a");
+	fprintf(LogFile, "main Stop\n");
+	fclose(LogFile);
 
 	return 0;
 }
@@ -40,6 +48,11 @@ int main(int argc, char* argv[])
 
 VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 {
+	FILE* LogFile;
+	fopen_s(&LogFile, "G:\\project\\logs\\ServiceMain.log", "a");
+	fprintf(LogFile, "Service main Start\n");
+	fclose(LogFile);
+
 	DWORD Status = E_FAIL;
 
 	// Register our service control handler with the SCM
@@ -125,6 +138,10 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 			L"My Sample Service: ServiceMain: SetServiceStatus returned error");
 	}
 
+
+	fopen_s(&LogFile, "G:\\project\\logs\\ServiceMain.log", "a");
+	fprintf(LogFile, "Service end\n");
+	fclose(LogFile);
 	return;
 }
 
@@ -154,7 +171,7 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 		}
 
 		// This will signal the worker thread to start shutting down
-		SetEvent(g_ServiceStopEvent);
+		SetEvent(g_ServiceStopEvent	);
 
 		break;
 
@@ -166,13 +183,22 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 
 DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
 {
+
+	FILE* LogFile;
+	fopen_s(&LogFile, "G:\\project\\logs\\ServiceTread.log", "a");
+	fprintf(LogFile, "Start\n");
+	fclose(LogFile);
+
+
 	Server();
 
 	//  Periodically check if the service has been requested to stop
-	while (WaitForSingleObject(g_ServiceStopEvent, 0) != WAIT_OBJECT_0)
-	{
-		ListenConnection();
-	}
+	ListenConnection();
+
+
+	fopen_s(&LogFile, "G:\\project\\logs\\ServiceTread.log", "a");
+	fprintf(LogFile, "Stop\n");
+	fclose(LogFile);
 
 	StopServer();
 

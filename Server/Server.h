@@ -34,19 +34,29 @@ HANDLE                g_ServiceStopEvent = INVALID_HANDLE_VALUE;
 
 int Server()
 {
+	FILE* LogFile;
+	fopen_s(&LogFile, "G:\\project\\logs\\Server.log", "a");
+	fprintf(LogFile, "Start\n");
+	fclose(LogFile);
+
+
 
 	InitializeCriticalSection(&CsConn);
 	InitializeCriticalSection(&CsNames);
 
-	CreateThread(
+	/*CreateThread(
 		NULL,              // no security attribute
 		NULL,                 // default stack size
 		(LPTHREAD_START_ROUTINE)Pipes,    // функция обработки сообщений
 		NULL,    // параметр потока
 		NULL,                 // not suspended
 		NULL);      // возврат id потока
-
+	*/
 	Connection();
+
+	fopen_s(&LogFile, "G:\\project\\logs\\Server.log", "a");
+	fprintf(LogFile, "end\n");
+	fclose(LogFile);
 
 	return 0;
 }
@@ -112,48 +122,79 @@ void GetDataFromXml(std::string& server_ip, int& port)
 void ListenConnection()
 {
 
-	char buffer[100] = "";
-	Sleep(50);
-	if (Connect = accept(Listen, NULL, NULL))
-	{
-		recv(Connect, buffer, 100, NULL);
+	FILE* LogFile;
+	fopen_s(&LogFile, "G:\\project\\logs\\ListenConnection.log", "a");
+	fprintf(LogFile, "Start\n");
+	fclose(LogFile);
 
-		for (auto it : names)
+	
+
+	while (WaitForSingleObject(g_ServiceStopEvent, 0) != WAIT_OBJECT_0)
+	{
+		char buffer[100] = "";
+		Sleep(50);
+
+		fd_set s_set;
+		FD_ZERO(&s_set);
+		FD_SET(Listen, &s_set);
+		timeval timeout = { 0, 0 };
+			
+		if (select(Listen + 1, &s_set, 0, 0, &timeout))
 		{
-			if (!strcmp(buffer, it.c_str()))
+			Connect = accept(Listen, NULL, NULL);
+			recv(Connect, buffer, 100, NULL);
+
+			for (auto it : names)
 			{
-				strcpy_s(buffer, 100, "-1");
+				if (!strcmp(buffer, it.c_str()))
+				{
+					strcpy_s(buffer, 100, "-1");
+				}
+			}
+			if (!strcmp(buffer, "-1"))
+			{
+				send(Connect, "-1", strlen("-1"), NULL);
+				closesocket(Connect);
+			}
+			else
+			{
+				char Hello[200] = "";
+				EnterCriticalSection(&CsConn);
+				Connections.push_back(Connect);
+				LeaveCriticalSection(&CsConn);
+
+				EnterCriticalSection(&CsNames);
+				names.push_back(buffer);
+				LeaveCriticalSection(&CsNames);
+
+				strcat_s(Hello, buffer);
+				strcat_s(Hello, " joined the chat\n");
+				SendMessageToClient(Hello);
+
+				CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
+
+
+				fopen_s(&LogFile, "G:\\project\\logs\\ListenConnection.log", "a");
+				fprintf(LogFile, "Create tread\n");
+				fclose(LogFile);
 			}
 		}
-		if (!strcmp(buffer, "-1"))
-		{
-			send(Connect, "-1", strlen("-1"), NULL);
-			closesocket(Connect);
-		}
-		else
-		{
-			char Hello[200] = "";
-			EnterCriticalSection(&CsConn);
-			Connections.push_back(Connect);
-			LeaveCriticalSection(&CsConn);
-
-			EnterCriticalSection(&CsNames);
-			names.push_back(buffer);
-			LeaveCriticalSection(&CsNames);
-
-			strcat_s(Hello, buffer);
-			strcat_s(Hello, " joined the chat\n");
-			SendMessageToClient(Hello);
-
-			CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
-		}
 	}
+
+	fopen_s(&LogFile, "G:\\project\\logs\\ListenConnection.log", "a");
+	fprintf(LogFile, "end\n");
+	fclose(LogFile);
 }
 
 
 //Ф-ция для потока прослушивания клиента
 void ConnectionClient(SOCKET Client)
 {
+	FILE* LogFile;
+	fopen_s(&LogFile, "G:\\project\\logs\\Client.log", "a");
+	fprintf(LogFile, "Start\n");
+	fclose(LogFile);
+
 	char buffer[1024];
 	while(WaitForSingleObject(g_ServiceStopEvent, 0) != WAIT_OBJECT_0)
 	{
@@ -181,10 +222,19 @@ void ConnectionClient(SOCKET Client)
 			Connections.erase(it);
 			LeaveCriticalSection(&CsConn);
 
+
+			fopen_s(&LogFile, "G:\\project\\logs\\Client.log", "a");
+			fprintf(LogFile, "Client disconnect\n");
+			fclose(LogFile);
 			return;
 		}
 
 	}
+
+
+	fopen_s(&LogFile, "G:\\project\\logs\\Client.log", "a");
+	fprintf(LogFile, "end\n");
+	fclose(LogFile);
 	//delete []buffer;
 }
 
@@ -204,6 +254,11 @@ void SendMessageToClient(char* buffer)
 
 void StopServer()
 {
+	FILE* LogFile;
+	fopen_s(&LogFile, "G:\\project\\logs\\Server.log", "a");
+	fprintf(LogFile, "StopServer Start\n");
+	fclose(LogFile);
+
 	EnterCriticalSection(&CsConn);
 	for (auto sk : Connections)
 	{
@@ -218,6 +273,10 @@ void StopServer()
 	names.clear();
 	LeaveCriticalSection(&CsNames);
 
+	fopen_s(&LogFile, "G:\\project\\logs\\Server.log", "a");
+	fprintf(LogFile, "StopServer end\n");
+	fclose(LogFile);
+
 }
 
 
@@ -229,6 +288,12 @@ void Pipes()
 	HANDLE hThread = NULL;
 	WCHAR pipename[80] = L"\\\\.\\pipe\\Server";//? Имя канала
 
+
+	FILE* LogFile;
+	fopen_s(&LogFile,"G:\\project\\logs\\Pipe.log", "a");
+	fprintf(LogFile, "Start\n");
+	fclose(LogFile);
+
 	// Основной цикл создает экземпляр именованного канала и
 	// Затем ждет клиент для подключения к нему. Когда клиент
 	// Подключается, создается поток для обработки сообщений
@@ -237,6 +302,12 @@ void Pipes()
 
 	while(WaitForSingleObject(g_ServiceStopEvent, 0) != WAIT_OBJECT_0)
 	{
+		
+		fopen_s(&LogFile, "G:\\project\\logs\\Pipe.log", "a");
+		fprintf(LogFile, "While\n");
+		fclose(LogFile);
+
+
 		hPipe = CreateNamedPipe(
 			pipename,             // имя канала
 			PIPE_ACCESS_DUPLEX,       // доступ на чтение\запись
@@ -249,9 +320,18 @@ void Pipes()
 			0,                        // Значение времени ожидания
 			NULL);                    //атрибуты
 
+		fopen_s(&LogFile, "G:\\project\\logs\\Pipe.log", "a");
+		fprintf(LogFile, "hPipe created\n");
+		fclose(LogFile);
+
+
 		if (hPipe == INVALID_HANDLE_VALUE)
 		{
-			printf("Failed to create a pipe channel\n");
+
+			fopen_s(&LogFile, "G:\\project\\logs\\Pipe.log", "a");
+			fprintf(LogFile, "Failed to create a pipe channel\n");
+			fclose(LogFile);
+
 			return;
 		}
 
@@ -263,7 +343,10 @@ void Pipes()
 
 		if (fConnected)
 		{
-			printf("PipeClient connect\n");
+			fopen_s(&LogFile, "G:\\project\\logs\\Pipe.log", "a");
+			fprintf(LogFile,"PipeClient connect\n");
+			fclose(LogFile);
+			
 
 			// Создаем поток для этого клиента.
 			hThread = CreateThread(
@@ -276,7 +359,11 @@ void Pipes()
 
 			if (hThread == NULL)
 			{
-				printf("Failed to create a thread\n");
+				fopen_s(&LogFile, "G:\\project\\logs\\Pipe.log", "a");
+				fprintf(LogFile,"Failed to create a thread\n");
+				fclose(LogFile);
+
+				
 				return;
 			}
 
@@ -286,6 +373,12 @@ void Pipes()
 			// Ошибка подключения
 			CloseHandle(hPipe);
 	}
+
+
+	fopen_s(&LogFile, "G:\\project\\logs\\Pipe.log", "a");
+	fprintf(LogFile, "end\n");
+	fclose(LogFile);
+
 	CloseHandle(hPipe);
 }
 
@@ -306,6 +399,12 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 
 	// Сделать некоторые дополнительные проверки с приложением ошибку будет продолжать работать, даже если это
 	// поток не удается.
+
+
+	FILE* LogFile;
+	fopen_s(&LogFile, "G:\\project\\logs\\InstanceTread.log", "a");
+	fprintf(LogFile, "Start\n");
+	fclose(LogFile);
 
 	if (lpvParam == NULL)
 	{
@@ -335,7 +434,11 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		return (DWORD)-1;
 	}
 
-	printf("Tread create, ready  to work.\n");
+	
+	fopen_s(&LogFile, "G:\\project\\logs\\InstanceTread.log", "a");
+	fprintf(LogFile,"Tread create, ready  to work.\n");
+	fclose(LogFile);
+	
 
 	// Параметр потоков представляет собой дескриптор экземпляра объекта трубы.
 	hPipe = (HANDLE)lpvParam;
@@ -386,11 +489,18 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		LeaveCriticalSection(&CsNames);
 		if (!fSuccess)
 		{
-			printf("PipeClient Disconnect\n");
+			FILE* LogFile;
+			fopen_s(&LogFile, "G:\\project\\logs\\InstanceTread.log", "a");
+			fprintf(LogFile, "PipeClient Disconnect\n");
+			fclose(LogFile);
 			break;
 		}
 	}
 
+
+	fopen_s(&LogFile, "G:\\project\\logs\\InstanceTread.log", "a");
+	fprintf(LogFile, "End\n");
+	fclose(LogFile);
 	// Очищаем все переменные и закрываем канал
 	FlushFileBuffers(hPipe);
 	DisconnectNamedPipe(hPipe);
