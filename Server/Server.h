@@ -44,14 +44,14 @@ int Server()
 	InitializeCriticalSection(&CsConn);
 	InitializeCriticalSection(&CsNames);
 
-	/*CreateThread(
+	CreateThread(
 		NULL,              // no security attribute
 		NULL,                 // default stack size
 		(LPTHREAD_START_ROUTINE)Pipes,    // функция обработки сообщений
 		NULL,    // параметр потока
 		NULL,                 // not suspended
 		NULL);      // возврат id потока
-	*/
+	
 	Connection();
 
 	fopen_s(&LogFile, "G:\\project\\logs\\Server.log", "a");
@@ -277,11 +277,25 @@ void StopServer()
 	fprintf(LogFile, "StopServer end\n");
 	fclose(LogFile);
 
+	closesocket(Listen);
+
 }
 
 
 void Pipes()
 {
+	HANDLE pSD;
+	pSD = (PSECURITY_DESCRIPTOR)LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
+	if (!InitializeSecurityDescriptor(pSD, SECURITY_DESCRIPTOR_REVISION))
+		return;
+	if (!SetSecurityDescriptorDacl(pSD, TRUE, NULL, FALSE))
+		return;
+
+	SECURITY_ATTRIBUTES sa;
+	sa.nLength = sizeof(sa);
+	sa.lpSecurityDescriptor = pSD;
+	sa.bInheritHandle = FALSE;
+
 	BOOL   fConnected = FALSE;
 	DWORD  dwThreadId = 0;
 	HANDLE hPipe = INVALID_HANDLE_VALUE;
@@ -304,7 +318,7 @@ void Pipes()
 	{
 		
 		fopen_s(&LogFile, "G:\\project\\logs\\Pipe.log", "a");
-		fprintf(LogFile, "While\n");
+		fprintf(LogFile, "While start\n");
 		fclose(LogFile);
 
 
@@ -318,7 +332,7 @@ void Pipes()
 			1024,                  // Размер выходного буфера
 			1024,                  // Размер входного буфера
 			0,                        // Значение времени ожидания
-			NULL);                    //атрибуты
+			&sa);                    //атрибуты
 
 		fopen_s(&LogFile, "G:\\project\\logs\\Pipe.log", "a");
 		fprintf(LogFile, "hPipe created\n");
@@ -372,6 +386,10 @@ void Pipes()
 		else
 			// Ошибка подключения
 			CloseHandle(hPipe);
+
+		fopen_s(&LogFile, "G:\\project\\logs\\Pipe.log", "a");
+		fprintf(LogFile, "While end\n");
+		fclose(LogFile);
 	}
 
 
@@ -470,9 +488,9 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 		// Обработка входящих сообщений.
 		//GetAnswerToRequest(pchRequest, pchReply, &cbReplyBytes);
 		// Запись ответа
-		EnterCriticalSection(&CsNames);
 		int lenght = 0;
 		char namesToMesage[1000] = "";
+		EnterCriticalSection(&CsNames);
 		for (auto it : names)
 		{
 			strcat_s(namesToMesage, it.c_str());
@@ -480,13 +498,13 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			namesToMesage[lenght++] = '\n';
 			namesToMesage[lenght++] = '\0';
 		}
+		LeaveCriticalSection(&CsNames);
 		fSuccess = WriteFile(
 			hPipe,        // handle to pipe
 			namesToMesage,     // buffer to write from
 			1000 * sizeof(char), // number of bytes to write
 			&cbWritten,   // number of bytes written
 			NULL);        // not overlapped I/O
-		LeaveCriticalSection(&CsNames);
 		if (!fSuccess)
 		{
 			FILE* LogFile;

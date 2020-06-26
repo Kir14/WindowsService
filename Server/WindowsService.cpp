@@ -75,7 +75,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 	{
 		OutputDebugString(
-			L"My Sample Service: ServiceMain: SetServiceStatus returned error");
+			L"ServiceMain: SetServiceStatus returned error");
 	}
 
 	/*
@@ -96,7 +96,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 		if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 		{
 			OutputDebugString(
-				L"My Sample Service: ServiceMain: SetServiceStatus returned error");
+				L"ServiceMain: SetServiceStatus returned error");
 		}
 		return;
 	}
@@ -110,7 +110,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 	{
 		OutputDebugString(
-			L"My Sample Service: ServiceMain: SetServiceStatus returned error");
+			L"ServiceMain: SetServiceStatus returned error");
 	}
 
 	// Start a thread that will perform the main task of the service
@@ -135,7 +135,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 	{
 		OutputDebugString(
-			L"My Sample Service: ServiceMain: SetServiceStatus returned error");
+			L"ServiceMain: SetServiceStatus returned error");
 	}
 
 
