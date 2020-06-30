@@ -18,12 +18,6 @@
     <ClInclude Include="frameworks.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
-    <ClInclude Include="Service.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="Service_2_0.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
     <ClInclude Include="Server.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>

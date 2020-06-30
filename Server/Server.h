@@ -27,7 +27,7 @@ CRITICAL_SECTION CsConn;
 CRITICAL_SECTION CsNames;
 int ClientMax;
 
-HANDLE                g_ServiceStopEvent = INVALID_HANDLE_VALUE;
+HANDLE g_ServiceStopEvent = INVALID_HANDLE_VALUE;
 
 
 
@@ -111,7 +111,6 @@ void GetDataFromXml(std::string& server_ip, int& port)
 	pugi::xml_document doc;
 	doc.load_file("G:\\project\\Chat_Server.xml");
 	pugi::xml_node chat = doc.child("chat_server");
-	pugi::xml_node server;
 	server_ip = chat.child("server_ip").text().as_string();
 	port = chat.child("port").text().as_int();
 	ClientMax = chat.child("clients").text().as_int();
@@ -168,7 +167,7 @@ void ListenConnection()
 				LeaveCriticalSection(&CsNames);
 
 				strcat_s(Hello, buffer);
-				strcat_s(Hello, " joined the chat\n");
+				strcat_s(Hello, " joined the chat\r\n");
 				SendMessageToClient(Hello);
 
 				CreateThread(NULL, NULL, (LPTHREAD_START_ROUTINE)ConnectionClient, (LPVOID)Connect, NULL, NULL);
@@ -201,7 +200,7 @@ void ConnectionClient(SOCKET Client)
 		Sleep(50);
 		memset(buffer, 0, sizeof(buffer));
 
-		if (recv(*std::find(Connections.begin(), Connections.end(), Client), buffer, 1024, NULL) != SOCKET_ERROR)
+		if (recv( Client, buffer, 1024, NULL) != SOCKET_ERROR)
 		{
 			SendMessageToClient(buffer);
 		}
@@ -209,7 +208,7 @@ void ConnectionClient(SOCKET Client)
 		{
 			auto it = std::find(Connections.begin(), Connections.end(), Client);
 			strcat_s(buffer, names.at((it - Connections.begin())).c_str());
-			strcat_s(buffer, " disconnected from the chat\n");
+			strcat_s(buffer, " disconnected from the chat\r\n");
 			SendMessageToClient(buffer);
 
 			EnterCriticalSection(&CsNames);
@@ -262,7 +261,7 @@ void StopServer()
 	EnterCriticalSection(&CsConn);
 	for (auto sk : Connections)
 	{
-		send(sk, "Server Stop", strlen("Server Stop"), NULL);
+		send(sk, "Server Stop\r\n", strlen("Server Stop\r\n"), NULL);
 		closesocket(sk);
 		Connections.erase(Connections.begin());
 	}
@@ -278,6 +277,7 @@ void StopServer()
 	fclose(LogFile);
 
 	closesocket(Listen);
+
 
 }
 
@@ -307,13 +307,7 @@ void Pipes()
 	fopen_s(&LogFile,"G:\\project\\logs\\Pipe.log", "a");
 	fprintf(LogFile, "Start\n");
 	fclose(LogFile);
-
-	// Основной цикл создает экземпляр именованного канала и
-	// Затем ждет клиент для подключения к нему. Когда клиент
-	// Подключается, создается поток для обработки сообщений
-	// С этого клиента, и этот цикл может свободно ждать
-	// Следующий клиент подключения запрос. Это бесконечный цикл.
-
+	
 	while(WaitForSingleObject(g_ServiceStopEvent, 0) != WAIT_OBJECT_0)
 	{
 		
@@ -349,11 +343,7 @@ void Pipes()
 			return;
 		}
 
-		// Ожидание клиента для подключения; если это удастся,
-		// функция возвращает ненулевое значение. Если функция
-		// возвращает ноль, GetLastError возвращает ERROR_PIPE подключены.
-
-		fConnected = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+		fConnected = ConnectNamedPipe(hPipe, NULL);
 
 		if (fConnected)
 		{
@@ -402,21 +392,15 @@ void Pipes()
 
 DWORD WINAPI InstanceThread(LPVOID lpvParam)
 // Эта процедура является функцией обработки нити для чтения и ответа для клиента
-// С помощью подключения к открытой трубе передается от основного цикла. Обратите внимание, это позволяет
-// Основной цикл продолжить выполнение, потенциально создавая больше потоков
-// Этой процедуры могут работать одновременно, в зависимости от количества поступающих
-// Клиентские соединения.
 {
 	HANDLE hHeap = GetProcessHeap();//Получаем кучу
-	TCHAR* pchRequest = (TCHAR*)HeapAlloc(hHeap, 0, 1024 * sizeof(TCHAR));//Выделяем в ней память
-	TCHAR* pchReply = (TCHAR*)HeapAlloc(hHeap, 0, 1024 * sizeof(TCHAR));//Выделяем в ней память
+
+	//TCHAR* pchRequest = (TCHAR*)HeapAlloc(hHeap, 0, 1024 * sizeof(TCHAR));//Выделяем в ней память
+	//TCHAR* pchReply = (TCHAR*)HeapAlloc(hHeap, 0, 1024 * sizeof(TCHAR));//Выделяем в ней память
 
 	DWORD cbBytesRead = 0, cbReplyBytes = 0, cbWritten = 0;
 	BOOL fSuccess = FALSE;
 	HANDLE hPipe = NULL;
-
-	// Сделать некоторые дополнительные проверки с приложением ошибку будет продолжать работать, даже если это
-	// поток не удается.
 
 
 	FILE* LogFile;
@@ -426,31 +410,22 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 
 	if (lpvParam == NULL)
 	{
-		printf("\nERROR - Pipe Server Failure:\n");
-		printf("   InstanceThread got an unexpected NULL value in lpvParam.\n");
-		printf("   InstanceThread exitting.\n");
-		if (pchReply != NULL) HeapFree(hHeap, 0, pchReply);
-		if (pchRequest != NULL) HeapFree(hHeap, 0, pchRequest);
+		//if (pchReply != NULL) HeapFree(hHeap, 0, pchReply);
+		//if (pchRequest != NULL) HeapFree(hHeap, 0, pchRequest);
 		return (DWORD)-1;
 	}
 
-	if (pchRequest == NULL)
+	/*if (pchRequest == NULL)
 	{
-		printf("\nERROR - Pipe Server Failure:\n");
-		printf("   InstanceThread got an unexpected NULL heap allocation.\n");
-		printf("   InstanceThread exitting.\n");
 		if (pchReply != NULL) HeapFree(hHeap, 0, pchReply);
 		return (DWORD)-1;
 	}
 
 	if (pchReply == NULL)
 	{
-		printf("\nERROR - Pipe Server Failure:\n");
-		printf("   InstanceThread got an unexpected NULL heap allocation.\n");
-		printf("   InstanceThread exitting.\n");
 		if (pchRequest != NULL) HeapFree(hHeap, 0, pchRequest);
 		return (DWORD)-1;
-	}
+	}*/
 
 	
 	fopen_s(&LogFile, "G:\\project\\logs\\InstanceTread.log", "a");
@@ -485,8 +460,10 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 			}
 			break;
 		}*/
+
 		// Обработка входящих сообщений.
 		//GetAnswerToRequest(pchRequest, pchReply, &cbReplyBytes);
+
 		// Запись ответа
 		int lenght = 0;
 		char namesToMesage[1000] = "";
@@ -519,24 +496,19 @@ DWORD WINAPI InstanceThread(LPVOID lpvParam)
 	fopen_s(&LogFile, "G:\\project\\logs\\InstanceTread.log", "a");
 	fprintf(LogFile, "End\n");
 	fclose(LogFile);
+
 	// Очищаем все переменные и закрываем канал
 	FlushFileBuffers(hPipe);
 	DisconnectNamedPipe(hPipe);
 	CloseHandle(hPipe);
-	HeapFree(hHeap, 0, pchRequest);
-	HeapFree(hHeap, 0, pchReply);
+	//HeapFree(hHeap, 0, pchRequest);
+	//HeapFree(hHeap, 0, pchReply);
 	return 1;
 }
 
 VOID GetAnswerToRequest(LPTSTR pchRequest, LPTSTR pchReply, LPDWORD pchBytes)
-// Эта процедура является простой функцией для печати запрос клиента к консоли
-// И заполнить ответный буфер со строкой данных по умолчанию. Это где вы
-// Поставил бы реально запроса клиента код обработки, которая работает в контексте
-// Экземпляра потока. Имейте в виду, основной поток будет продолжать ждать
-// И получить другие клиентские подключения, когда экземпляр нить работает.
 {
 	//printf("Message from PipeClient: %ws\n", pchRequest);//Это сообщение от клиента
-
 	// Проверка исходящего сообщения, чтобы убедиться, что это не слишком длинная для буфера.
 	if (FAILED(StringCchCopy(pchReply, 1024, L"Server get message )")))//Отправка ответа
 	{

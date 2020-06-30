@@ -14,33 +14,17 @@ DWORD WINAPI ServiceWorkerThread(LPVOID lpParam);
 
 int main(int argc, char* argv[])
 {
-	FILE* LogFile;
-	fopen_s(&LogFile, "G:\\project\\logs\\main.log", "a");
-	fprintf(LogFile, "main Start\n");
-	fclose(LogFile);
-
-
+	
 	SERVICE_TABLE_ENTRY ServiceTable[] =
 	{
 		{(LPWSTR)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
 		{NULL, NULL}
-	};
+	};		
 
 	if (StartServiceCtrlDispatcher(ServiceTable) == FALSE)
 	{
 		return GetLastError();
 	}
-
-
-	/*HANDLE hThread = CreateThread(NULL, 0, ServiceWorkerThread, NULL, 0, NULL);
-	while (true)
-	{
-
-	}
-	*/
-	fopen_s(&LogFile, "G:\\project\\logs\\main.log", "a");
-	fprintf(LogFile, "main Stop\n");
-	fclose(LogFile);
 
 	return 0;
 }
@@ -48,11 +32,7 @@ int main(int argc, char* argv[])
 
 VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 {
-	FILE* LogFile;
-	fopen_s(&LogFile, "G:\\project\\logs\\ServiceMain.log", "a");
-	fprintf(LogFile, "Service main Start\n");
-	fclose(LogFile);
-
+	
 	DWORD Status = E_FAIL;
 
 	// Register our service control handler with the SCM
@@ -75,7 +55,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 	{
 		OutputDebugString(
-			L"ServiceMain: SetServiceStatus returned error");
+			L"SetServiceStatus returned error");
 	}
 
 	/*
@@ -96,7 +76,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 		if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 		{
 			OutputDebugString(
-				L"ServiceMain: SetServiceStatus returned error");
+				L"SetServiceStatus returned error");
 		}
 		return;
 	}
@@ -110,7 +90,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 	{
 		OutputDebugString(
-			L"ServiceMain: SetServiceStatus returned error");
+			L"SetServiceStatus returned error");
 	}
 
 	// Start a thread that will perform the main task of the service
@@ -120,10 +100,7 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	WaitForSingleObject(hThread, INFINITE);
 
 
-	/*
-	 * Perform any cleanup tasks
-	 */
-
+	
 	CloseHandle(g_ServiceStopEvent);
 
 	// Tell the service controller we are stopped
@@ -135,13 +112,9 @@ VOID WINAPI ServiceMain(DWORD argc, LPTSTR* argv)
 	if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 	{
 		OutputDebugString(
-			L"ServiceMain: SetServiceStatus returned error");
+			L"SetServiceStatus returned error");
 	}
 
-
-	fopen_s(&LogFile, "G:\\project\\logs\\ServiceMain.log", "a");
-	fprintf(LogFile, "Service end\n");
-	fclose(LogFile);
 	return;
 }
 
@@ -155,10 +128,6 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 		if (g_ServiceStatus.dwCurrentState != SERVICE_RUNNING)
 			break;
 
-		/*
-		 * Perform tasks necessary to stop the service here
-		 */
-
 		g_ServiceStatus.dwControlsAccepted = 0;
 		g_ServiceStatus.dwCurrentState = SERVICE_STOP_PENDING;
 		g_ServiceStatus.dwWin32ExitCode = 0;
@@ -167,7 +136,7 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 		if (SetServiceStatus(g_StatusHandle, &g_ServiceStatus) == FALSE)
 		{
 			OutputDebugString(
-				L"My Sample Service: ServiceCtrlHandler: SetServiceStatus returned error");
+				L"ServiceCtrlHandler: SetServiceStatus returned error");
 		}
 
 		// This will signal the worker thread to start shutting down
@@ -184,21 +153,9 @@ VOID WINAPI ServiceCtrlHandler(DWORD CtrlCode)
 DWORD WINAPI ServiceWorkerThread(LPVOID lpParam)
 {
 
-	FILE* LogFile;
-	fopen_s(&LogFile, "G:\\project\\logs\\ServiceTread.log", "a");
-	fprintf(LogFile, "Start\n");
-	fclose(LogFile);
-
-
 	Server();
 
-	//  Periodically check if the service has been requested to stop
 	ListenConnection();
-
-
-	fopen_s(&LogFile, "G:\\project\\logs\\ServiceTread.log", "a");
-	fprintf(LogFile, "Stop\n");
-	fclose(LogFile);
 
 	StopServer();
 

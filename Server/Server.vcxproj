@@ -129,8 +129,6 @@
   <ItemGroup>
     <ClInclude Include="frameworks.h" />
     <ClInclude Include="Server.h" />
-    <ClInclude Include="Service.h" />
-    <ClInclude Include="Service_2_0.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
